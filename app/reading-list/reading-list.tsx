@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { BookOpenIcon, TriangleAlertIcon } from "lucide-react";
 
 import { seoulTodayIso } from "@/lib/reading";
-import { markAsRead, removeFromList } from "./actions";
+import { addDemoBooks, markAsRead, removeFromList } from "./actions";
 import { BookCover } from "@/components/book-cover";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
@@ -104,6 +105,29 @@ function MarkAsReadDialog({ book }: { book: SavedBook }) {
   );
 }
 
+// 추천 화면이 생기기 전까지 쓰는 임시 버튼이다. 그 화면이 붙으면 지운다.
+function DemoBooksButton() {
+  const [state, formAction, pending] = useActionState(addDemoBooks, {
+    error: null,
+  });
+
+  return (
+    <form action={formAction} className="flex flex-col items-center gap-2">
+      <Button type="submit" variant="outline" disabled={pending}>
+        {pending ? "담는 중" : "책 8권 담아 보기"}
+      </Button>
+      <FieldDescription className="text-center">
+        추천 기능이 준비되기 전까지 쓰는 임시 방법입니다.
+      </FieldDescription>
+      {state.error ? (
+        <FieldDescription className="text-destructive">
+          {state.error}
+        </FieldDescription>
+      ) : null}
+    </form>
+  );
+}
+
 function RemoveButton({ id }: { id: string }) {
   const [state, formAction, pending] = useActionState(removeFromList, {
     error: null,
@@ -149,6 +173,9 @@ export function ReadingList({ books, loadFailed }: Props) {
             또래가 많이 읽은 책을 살펴보고 읽고 싶은 책을 담아 보세요.
           </EmptyDescription>
         </EmptyHeader>
+        <EmptyContent>
+          <DemoBooksButton />
+        </EmptyContent>
       </Empty>
     );
   }
