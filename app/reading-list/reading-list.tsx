@@ -1,11 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useActionState } from "react";
 import { BookOpenIcon, TriangleAlertIcon } from "lucide-react";
 
-import { createClient } from "@/lib/supabase/client";
+import { seoulTodayIso } from "@/lib/reading";
+import { markAsRead, removeFromList } from "./actions";
+import { BookCover } from "@/components/book-cover";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Empty,
   EmptyDescription,
@@ -13,6 +23,13 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import {
   Item,
   ItemActions,
@@ -37,27 +54,75 @@ type Props = {
   loadFailed: boolean;
 };
 
+function MarkAsReadDialog({ book }: { book: SavedBook }) {
+  const [state, formAction, pending] = useActionState(markAsRead, {
+    error: null,
+  });
+  const today = seoulTodayIso();
+
+  return (
+    <Dialog>
+      <DialogTrigger render={<Button variant="outline" size="sm" />}>
+        읽었어요
+      </DialogTrigger>
+      <DialogContent>
+        <form action={formAction}>
+          <input type="hidden" name="id" value={book.id} />
+          <DialogHeader>
+            <DialogTitle>읽은 날짜</DialogTitle>
+            <DialogDescription>{book.title}</DialogDescription>
+          </DialogHeader>
+          <FieldGroup className="py-4">
+            <Field>
+              <FieldLabel htmlFor={`readOn-${book.id}`}>언제 읽었나요?</FieldLabel>
+              <Input
+                id={`readOn-${book.id}`}
+                name="readOn"
+                type="date"
+                defaultValue={today}
+                max={today}
+                required
+              />
+              <FieldDescription>
+                예전에 읽은 책이면 그때 날짜로 바꿔 주세요.
+              </FieldDescription>
+            </Field>
+            {state.error ? (
+              <FieldDescription className="text-destructive">
+                {state.error}
+              </FieldDescription>
+            ) : null}
+          </FieldGroup>
+          <DialogFooter>
+            <Button type="submit" disabled={pending}>
+              {pending ? "기록하는 중" : "기록하기"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RemoveButton({ id }: { id: string }) {
+  const [state, formAction, pending] = useActionState(removeFromList, {
+    error: null,
+  });
+
+  return (
+    <form action={formAction}>
+      <input type="hidden" name="id" value={id} />
+      <Button type="submit" variant="ghost" size="sm" disabled={pending}>
+        {pending ? "빼는 중" : "빼기"}
+      </Button>
+      {state.error ? (
+        <p className="text-sm text-destructive">{state.error}</p>
+      ) : null}
+    </form>
+  );
+}
+
 export function ReadingList({ books, loadFailed }: Props) {
-  const router = useRouter();
-  const [removing, setRemoving] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleRemove(id: string) {
-    setError(null);
-    setRemoving(id);
-
-    const supabase = createClient();
-    const { error } = await supabase.from("reading_list").delete().eq("id", id);
-    setRemoving(null);
-
-    if (error) {
-      setError("책을 빼지 못했습니다. 잠시 뒤에 다시 시도해 주세요.");
-      return;
-    }
-
-    router.refresh();
-  }
-
   if (loadFailed) {
     return (
       <Empty>
@@ -66,9 +131,7 @@ export function ReadingList({ books, loadFailed }: Props) {
             <TriangleAlertIcon />
           </EmptyMedia>
           <EmptyTitle>목록을 불러오지 못했습니다</EmptyTitle>
-          <EmptyDescription>
-            잠시 뒤에 새로고침해 주세요.
-          </EmptyDescription>
+          <EmptyDescription>잠시 뒤에 새로고침해 주세요.</EmptyDescription>
         </EmptyHeader>
       </Empty>
     );
@@ -91,44 +154,24 @@ export function ReadingList({ books, loadFailed }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      <ItemGroup className="gap-3">
-        {books.map((book) => (
-          <Item key={book.id} variant="outline">
-            <ItemMedia>
-              {book.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={book.image_url}
-                  alt=""
-                  className="h-16 w-12 rounded object-cover"
-                />
-              ) : (
-                <div className="flex h-16 w-12 items-center justify-center rounded bg-muted">
-                  <BookOpenIcon className="text-muted-foreground" />
-                </div>
-              )}
-            </ItemMedia>
-            <ItemContent>
-              <ItemTitle>{book.title}</ItemTitle>
-              <ItemDescription>
-                {[book.authors, book.publisher].filter(Boolean).join(" · ")}
-              </ItemDescription>
-            </ItemContent>
-            <ItemActions>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleRemove(book.id)}
-                disabled={removing === book.id}
-              >
-                {removing === book.id ? "빼는 중" : "빼기"}
-              </Button>
-            </ItemActions>
-          </Item>
-        ))}
-      </ItemGroup>
-    </div>
+    <ItemGroup className="gap-3">
+      {books.map((book) => (
+        <Item key={book.id} variant="outline">
+          <ItemMedia>
+            <BookCover url={book.image_url} />
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle>{book.title}</ItemTitle>
+            <ItemDescription>
+              {[book.authors, book.publisher].filter(Boolean).join(" · ")}
+            </ItemDescription>
+          </ItemContent>
+          <ItemActions>
+            <MarkAsReadDialog book={book} />
+            <RemoveButton id={book.id} />
+          </ItemActions>
+        </Item>
+      ))}
+    </ItemGroup>
   );
 }
