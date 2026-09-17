@@ -15,6 +15,7 @@ export default async function ReadingListPage() {
   const { data: books, error: loadError } = await supabase
     .from("reading_list")
     .select("id, isbn13, title, authors, publisher, image_url")
+    .is("read_on", null)
     .order("added_at", { ascending: false });
 
   return (

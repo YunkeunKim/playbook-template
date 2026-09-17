@@ -2,7 +2,10 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 
-const NAV = [{ href: "/reading-list", label: "읽을 책" }];
+const NAV = [
+  { href: "/reading-list", label: "읽을 책" },
+  { href: "/read-books", label: "읽은 책" },
+];
 
 export function AppHeader() {
   return (
