@@ -95,10 +95,10 @@ export function ProfileForm({ email, displayName, grade }: Props) {
   }
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full">
       <form onSubmit={handleSubmit}>
         <CardHeader>
-          <CardTitle>내 정보</CardTitle>
+          <CardTitle>계정</CardTitle>
           <CardDescription>{email}</CardDescription>
         </CardHeader>
         <CardContent>
