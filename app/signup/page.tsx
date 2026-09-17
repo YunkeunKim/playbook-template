@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useActionState } from "react";
 import Link from "next/link";
 
-import { createClient } from "@/lib/supabase/client";
 import { GRADES } from "@/lib/grade";
+import { signUp } from "./actions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -37,44 +36,12 @@ const gradeItems = [
 ];
 
 export default function SignUpPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [grade, setGrade] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-
-    if (!grade) {
-      setError("학년을 골라 주세요.");
-      return;
-    }
-
-    setPending(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { grade: Number(grade) } },
-    });
-    setPending(false);
-
-    if (error) {
-      setError(error.message);
-      return;
-    }
-
-    router.push("/settings");
-    router.refresh();
-  }
+  const [state, formAction, pending] = useActionState(signUp, { error: null });
 
   return (
     <div className="flex flex-1 items-center justify-center p-6">
       <Card className="w-full max-w-sm">
-        <form onSubmit={handleSubmit}>
+        <form action={formAction}>
           <CardHeader>
             <CardTitle>책길 시작하기</CardTitle>
             <CardDescription>
@@ -87,33 +54,27 @@ export default function SignUpPage() {
                 <FieldLabel htmlFor="email">이메일</FieldLabel>
                 <Input
                   id="email"
+                  name="email"
                   type="email"
                   autoComplete="email"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
                 />
               </Field>
               <Field>
                 <FieldLabel htmlFor="password">비밀번호</FieldLabel>
                 <Input
                   id="password"
+                  name="password"
                   type="password"
                   autoComplete="new-password"
                   required
                   minLength={6}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
                 />
                 <FieldDescription>여섯 자 이상으로 지어 주세요.</FieldDescription>
               </Field>
               <Field>
                 <FieldLabel htmlFor="grade">학년</FieldLabel>
-                <Select
-                  items={gradeItems}
-                  value={grade}
-                  onValueChange={(value) => setGrade(value as string | null)}
-                >
+                <Select items={gradeItems} name="grade">
                   <SelectTrigger id="grade">
                     <SelectValue />
                   </SelectTrigger>
@@ -128,9 +89,9 @@ export default function SignUpPage() {
                   </SelectContent>
                 </Select>
               </Field>
-              {error ? (
+              {state.error ? (
                 <FieldDescription className="text-destructive">
-                  {error}
+                  {state.error}
                 </FieldDescription>
               ) : null}
             </FieldGroup>
